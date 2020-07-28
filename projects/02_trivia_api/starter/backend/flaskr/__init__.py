@@ -57,11 +57,13 @@ def create_app(test_config=None):
     """
     Handle Get requests for questions, including pagination (every 10 questions).
     """
-    try:
-      questions = Question.query.order_by(Question.id).all()
-      current_questions = paginate_questions(request, questions)
-      categories = Category.query.all()
+    questions = Question.query.order_by(Question.id).all()
+    current_questions = paginate_questions(request, questions)
+    categories = Category.query.all()
 
+    if ((len(questions) == 0 )or (len(current_questions) == 0)):
+      abort(404)
+    else:
       # get all associated categories:
       current_categories_id = []
       for question in questions:
@@ -76,9 +78,6 @@ def create_app(test_config=None):
           'categories': format_categories(categories),
           'current_category': format_categories(current_categories)
       })
-    except:
-      abort(404)
-
 
   @app.route("/questions/<int:question_id>", methods=['DELETE'])
   def delete_question(question_id):
@@ -99,7 +98,7 @@ def create_app(test_config=None):
       })
 
     except:
-      abort(422)
+      abort(404)
 
 
   @app.route("/questions", methods=['POST'])
@@ -107,18 +106,22 @@ def create_app(test_config=None):
     """
     Handle POST request to post a new question.
     """
-    try:
-      body = request.get_json()
+    body = request.get_json()
 
-      if ('question' not in body and 'answer' not in body
-         and 'difficulty' not in body and 'category' not in body):
-          abort(400)
+    question = body.get('question', None)
+    answer = body.get('answer', None)
+    difficulty = body.get('difficulty', None)
+    category = body.get('category', None)
 
+    if ((question is None) or (answer is None) or (difficulty is None) or (category is None)):
+      abort(400)
+
+    else: 
       new_question = Question(
-        question=body.get('question'),
-        answer=body.get('answer'),
-        difficulty=body.get('difficulty'),
-        category=body.get('category')
+        question = question,
+        answer = answer,
+        difficulty = difficulty ,
+        category = category
       )
 
       new_question.insert()
@@ -128,8 +131,6 @@ def create_app(test_config=None):
           'created': new_question.id,
       })
 
-    except:
-      abort(422)
 
   @app.route('/questions/search', methods=['POST'])
   def search_questions():
@@ -161,7 +162,7 @@ def create_app(test_config=None):
         'current_category': format_categories(categories)
       })
     except:
-      abort(500)
+      abort(400)
   
 
   @app.route('/categories/<int:category_id>/questions', methods=['GET'])
@@ -169,22 +170,18 @@ def create_app(test_config=None):
     """ 
     Handle GET request to get questions based on category.
     """
-    try:
-      selection = Question.query.filter(Question.category == category_id).all()
-      current_question = paginate_questions(request, selection)
+    selection = Question.query.filter(Question.category == category_id).all()
+    current_question = paginate_questions(request, selection)
 
-      if len(selection) == 0:
-        abort (404)
-
+    if len(selection) == 0:
+      abort (404)
+    else:
       return jsonify({
         'success': True,
         'questions': current_question,
         'total_questions': len(selection),
         'current_category': category_id
       })
-
-    except:
-      abort(422)
 
   @app.route('/quizzes', methods=['POST'])
   def play_quiz():
